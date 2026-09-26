@@ -2,7 +2,7 @@
 RCA_REV := 37e5d83c056c8cbf827223d5814a93c5218df1a9
 COVERAGE_MIN_LINES := 75
 
-.PHONY: check fmt fmt-check lint test coverage complexity tools
+.PHONY: check fmt fmt-check lint test coverage package complexity tools
 
 check: fmt-check lint test complexity
 
@@ -20,6 +20,9 @@ test:
 
 coverage:
 	cargo llvm-cov --locked --all-targets --all-features --fail-under-lines $(COVERAGE_MIN_LINES)
+
+package:
+	cargo package --locked --allow-dirty
 
 complexity: tools
 	python3 scripts/complexity.py

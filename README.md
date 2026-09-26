@@ -128,6 +128,7 @@ make fmt            # apply the formatter
 make lint
 make test
 make coverage       # all targets/features; requires cargo-llvm-cov; 75% line floor
+make package        # verify the publishable crate contents and build
 make complexity     # detailed JSON: target/complexity/report.json
 ROOST_TEST_SEED=42 QUICKCHECK_TESTS=1000 cargo test --locked property_
 ```

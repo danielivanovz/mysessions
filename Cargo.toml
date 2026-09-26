@@ -5,6 +5,14 @@ edition = "2024"
 rust-version = "1.89"
 description = "Capture which terminal coding-agent sessions are open, and reopen them in terminal tabs after a restart."
 license = "MIT"
+include = [
+    "/Cargo.lock",
+    "/Cargo.toml",
+    "/LICENSE",
+    "/README.md",
+    "/src/**",
+    "/tests/**",
+]
 
 [dependencies]
 anyhow = "1"
