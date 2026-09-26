@@ -265,7 +265,7 @@ fn browser_explains_uncertainty_empty_states_and_small_terminal_requirements() {
     assert!(text.contains("Ambiguous") && text.contains("Unavailable"));
     assert!(text.contains("Enter review"));
     assert!(rendered(&state, 40, 10).contains("Resize to at least"));
-    assert!(rendered(&State::default(), 100, 28).contains("roost capture"));
+    assert!(rendered(&State::default(), 100, 28).contains("mysessions capture"));
 }
 
 #[test]
@@ -323,10 +323,10 @@ fn setup_requires_its_own_review_and_escape_cancels_confirmation() {
         Action::PrepareInstall
     );
     assert!(state.screen == Screen::Browse);
-    state.review_setup(false, vec![("Create", "/example/bin/roost".into())]);
+    state.review_setup(false, vec![("Create", "/example/bin/mysessions".into())]);
     let text = rendered(&state, 80, 24);
     assert!(text.contains("Enable automatic capture?"));
-    assert!(text.contains("/example/bin/roost"));
+    assert!(text.contains("/example/bin/mysessions"));
     assert!(text.contains("Enter confirm setup"));
     assert_eq!(state.handle(key(KeyCode::Enter)), Action::ApplySetup);
     state.handle(key(KeyCode::Esc));

@@ -12,7 +12,7 @@ requirements already in the design:
   can sit beside its own resume command and the header can explain
   recovery. JSON cannot hold comments and would need a sidecar.
 - **Configuration format: TOML.** Same parser, same mental model.
-- **Command name: `roost`**, matching the provisional repository name. One
+- **Command name: `mysessions`**, matching the product name My Sessions. One
   constant; trivial to change until a remote exists.
 
 ## Constraints being tested
@@ -123,4 +123,6 @@ Swift's only unique advantage, the in-process bridge, measured at zero.
 ## What is not decided by this record
 
 The distribution channel. Rust, TOML for configuration and snapshots, and
-the command name `roost` are accepted, as recorded at the top.
+the command name `mysessions` are accepted, as recorded at the top. The earlier
+provisional name `roost` was replaced before publication to avoid a collision
+with an adjacent terminal-workspace crate.

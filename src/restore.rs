@@ -42,7 +42,7 @@ pub fn run(options: &Options) -> Result<()> {
         )?,
         None => store
             .latest()?
-            .context("no snapshot found; run roost capture while agents are open")?,
+            .context("no snapshot found; run mysessions capture while agents are open")?,
     };
     execute(&snapshot, options, &Ghostty, &home_dir()?)
 }
@@ -104,11 +104,11 @@ fn execute(
         if options.apply {
             match terminal.open_tab(&session.cwd, &session.shell_command()) {
                 Ok(surface) => eprintln!(
-                    "roost: submitted {} to new Ghostty surface {surface}",
+                    "mysessions: submitted {} to new Ghostty surface {surface}",
                     session.session_id
                 ),
                 Err(error) => {
-                    eprintln!("roost: {}: {error:#}", session.session_id);
+                    eprintln!("mysessions: {}: {error:#}", session.session_id);
                     failures += 1;
                     continue;
                 }
@@ -117,7 +117,7 @@ fn execute(
         restored += 1;
     }
     eprintln!(
-        "roost: {restored} {}, {skipped} skipped, {failures} failed",
+        "mysessions: {restored} {}, {skipped} skipped, {failures} failed",
         if options.apply { "submitted" } else { "ready" }
     );
     ensure!(
@@ -286,7 +286,7 @@ mod tests {
         let bin = root.0.join("claude");
         std::fs::write(
             &bin,
-            b"#!/bin/sh\nprintf '%s\\n' \"$PWD\" \"$@\" > \"$ROOST_VERIFY_OUTPUT\"\n",
+            b"#!/bin/sh\nprintf '%s\\n' \"$PWD\" \"$@\" > \"$MYSESSIONS_VERIFY_OUTPUT\"\n",
         )
         .unwrap();
         std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
@@ -297,7 +297,7 @@ mod tests {
         let status = std::process::Command::new("/bin/sh")
             .args(["-c", &saved.shell_command()])
             .env("PATH", &root.0)
-            .env("ROOST_VERIFY_OUTPUT", &output)
+            .env("MYSESSIONS_VERIFY_OUTPUT", &output)
             .status()
             .unwrap();
         assert!(status.success());

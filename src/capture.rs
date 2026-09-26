@@ -17,7 +17,7 @@ pub fn run(dry_run: bool) -> Result<()> {
         None
     } else {
         let Some(lock) = crate::files::try_lock(&store.dir().join(".capture.lock"))? else {
-            eprintln!("roost: another capture or restore is in progress; skipped");
+            eprintln!("mysessions: another capture or restore is in progress; skipped");
             return Ok(());
         };
         Some(lock)
@@ -32,7 +32,7 @@ pub fn run(dry_run: bool) -> Result<()> {
     let (sessions, failed) = discover(
         &agents,
         &Ghostty,
-        std::env::var_os("ROOST_TRACE_CAPTURE").is_some(),
+        std::env::var_os("MYSESSIONS_TRACE_CAPTURE").is_some(),
     );
 
     let snap = Snapshot::new(sessions);
@@ -45,11 +45,11 @@ pub fn run(dry_run: bool) -> Result<()> {
     anyhow::ensure!(!failed, "capture incomplete; previous snapshot preserved");
     match store.write_if_changed(&snap)? {
         Some(p) => eprintln!(
-            "roost: wrote {} ({} sessions)",
+            "mysessions: wrote {} ({} sessions)",
             p.display(),
             snap.sessions.len()
         ),
-        None => eprintln!("roost: unchanged ({} sessions)", snap.sessions.len()),
+        None => eprintln!("mysessions: unchanged ({} sessions)", snap.sessions.len()),
     }
     Ok(())
 }
@@ -63,34 +63,34 @@ fn discover(
     let mut failed = false;
     for agent in agents {
         if trace {
-            eprintln!("roost: starting {}", agent.name());
+            eprintln!("mysessions: starting {}", agent.name());
         }
         match agent.discover() {
             Ok(mut s) => sessions.append(&mut s),
             // One agent's storage drifting must not hide the others, but it
             // must be loud.
             Err(e) => {
-                eprintln!("roost: {}: {e:#}", agent.name());
+                eprintln!("mysessions: {}: {e:#}", agent.name());
                 failed = true;
             }
         }
         if trace {
-            eprintln!("roost: finished {}", agent.name());
+            eprintln!("mysessions: finished {}", agent.name());
         }
     }
 
     if trace {
-        eprintln!("roost: starting ghostty");
+        eprintln!("mysessions: starting ghostty");
     }
     match terminal.list_surfaces() {
         Ok(surfaces) => pair_tabs(&mut sessions, &surfaces),
         Err(e) => {
-            eprintln!("roost: {}: {e:#}", terminal.name());
+            eprintln!("mysessions: {}: {e:#}", terminal.name());
             failed = true;
         }
     }
     if trace {
-        eprintln!("roost: finished ghostty");
+        eprintln!("mysessions: finished ghostty");
     }
 
     (sessions, failed)

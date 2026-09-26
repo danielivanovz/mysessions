@@ -323,7 +323,7 @@ fn pair(
     }
     for (cwd, count) in fallback {
         eprintln!(
-            "roost: opencode: log cannot identify {count} process(es) in {}; recency candidates are ambiguous",
+            "mysessions: opencode: log cannot identify {count} process(es) in {}; recency candidates are ambiguous",
             cwd.display()
         );
         let candidates: Vec<_> = rows

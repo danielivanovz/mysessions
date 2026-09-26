@@ -36,9 +36,9 @@ pub struct Snapshot {
 }
 
 const HEADER: &str = "\
-# roost snapshot — which agent sessions were open, where, and in which tab.
+# mysessions snapshot — which agent sessions were open, where, and in which tab.
 #
-# You do not need roost to use this file. Each [[session]] below is preceded
+# You do not need mysessions to use this file. Each [[session]] below is preceded
 # by the shell commands that reopen it: change into the directory first, then
 # run the resume command. Do not rely on the resume command to restore the
 # directory; at least one agent resumes in the launch directory instead.
@@ -150,13 +150,13 @@ impl Store {
         Self { dir, keep }
     }
 
-    /// `$XDG_STATE_HOME/roost` or `~/.local/state/roost`.
+    /// `$XDG_STATE_HOME/mysessions` or `~/.local/state/mysessions`.
     pub fn default_location() -> Result<Self> {
         let base = match std::env::var_os("XDG_STATE_HOME") {
             Some(p) => PathBuf::from(p),
             None => home_dir()?.join(".local").join("state"),
         };
-        Ok(Self::new(base.join("roost"), 20))
+        Ok(Self::new(base.join("mysessions"), 20))
     }
 
     pub fn dir(&self) -> &Path {

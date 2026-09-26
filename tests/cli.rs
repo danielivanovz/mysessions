@@ -1,10 +1,10 @@
 use std::process::{Command, Output};
 
-fn roost(args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_roost"))
+fn mysessions(args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_mysessions"))
         .args(args)
         .output()
-        .expect("roost binary should run")
+        .expect("mysessions binary should run")
 }
 
 fn stdout(output: &Output) -> String {
@@ -17,7 +17,7 @@ fn stderr(output: &Output) -> String {
 
 #[test]
 fn help_describes_the_public_commands() {
-    let output = roost(&["--help"]);
+    let output = mysessions(&["--help"]);
 
     assert!(output.status.success(), "{}", stderr(&output));
     let help = stdout(&output);
@@ -32,18 +32,18 @@ fn help_describes_the_public_commands() {
 
 #[test]
 fn version_matches_the_package_version() {
-    let output = roost(&["--version"]);
+    let output = mysessions(&["--version"]);
 
     assert!(output.status.success(), "{}", stderr(&output));
     assert_eq!(
         stdout(&output).trim(),
-        concat!("roost ", env!("CARGO_PKG_VERSION"))
+        concat!("mysessions ", env!("CARGO_PKG_VERSION"))
     );
 }
 
 #[test]
 fn invalid_arguments_fail_with_usage() {
-    let output = roost(&["--not-a-roost-option"]);
+    let output = mysessions(&["--not-a-mysessions-option"]);
 
     assert!(!output.status.success());
     let error = stderr(&output);
@@ -54,18 +54,18 @@ fn invalid_arguments_fail_with_usage() {
 #[test]
 fn restore_of_a_missing_explicit_snapshot_fails_without_creating_it() {
     let missing = std::env::temp_dir().join(format!(
-        "roost-cli-missing-{}-{}.toml",
+        "mysessions-cli-missing-{}-{}.toml",
         std::process::id(),
         std::thread::current().name().unwrap_or("test")
     ));
     assert!(!missing.exists());
 
-    let output = Command::new(env!("CARGO_BIN_EXE_roost"))
+    let output = Command::new(env!("CARGO_BIN_EXE_mysessions"))
         .arg("restore")
         .arg("--snapshot")
         .arg(&missing)
         .output()
-        .expect("roost binary should run");
+        .expect("mysessions binary should run");
 
     assert!(!output.status.success());
     assert!(stderr(&output).contains("reading"), "{}", stderr(&output));

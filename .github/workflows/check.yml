@@ -23,7 +23,7 @@ jobs:
         run: make security
       - name: Explore an additional reproducible property-test seed
         env:
-          ROOST_TEST_SEED: ${{ github.run_number }}
+          MYSESSIONS_TEST_SEED: ${{ github.run_number }}
           QUICKCHECK_TESTS: 1000
         run: cargo test --locked property_
       - name: Install coverage tooling

@@ -52,7 +52,7 @@ fn detail_block(title: &'static str) -> Block<'static> {
 pub fn draw(frame: &mut Frame<'_>, state: &State, history_index: usize, history_len: usize) {
     if frame.area().width < 60 || frame.area().height < 20 {
         frame.render_widget(
-            Paragraph::new("roost\n\nResize to at least 60 columns and 20 rows.\nq quit")
+            Paragraph::new("My Sessions\n\nResize to at least 60 columns and 20 rows.\nq quit")
                 .wrap(Wrap { trim: false }),
             frame.area(),
         );
@@ -116,7 +116,10 @@ fn draw_heading(frame: &mut Frame<'_>, state: &State, index: usize, count: usize
     );
     let text = vec![
         Line::from(vec![
-            Span::styled("roost", foreground(ACCENT).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "My Sessions",
+                foreground(ACCENT).add_modifier(Modifier::BOLD),
+            ),
             Span::styled(
                 format!("  /  {}", screen_title(state.screen)),
                 Style::default().add_modifier(Modifier::BOLD),
@@ -187,7 +190,7 @@ fn draw_table(frame: &mut Frame<'_>, state: &State, area: Rect) {
     let indices = state.visible();
     if indices.is_empty() {
         let text = if state.snapshot.is_none() {
-            "No snapshot to display.\nPress c to capture while agents are open (roost capture).\nUse [ and ] to try another saved snapshot."
+            "No snapshot to display.\nPress c to capture while agents are open (mysessions capture).\nUse [ and ] to try another saved snapshot."
         } else {
             "No matching sessions. Press Esc to clear your search."
         };

@@ -33,7 +33,7 @@ pub fn capture(dry_run: bool, hook: bool) -> Result<()> {
     })();
     if hook {
         if let Err(e) = result {
-            eprintln!("roost: hook capture: {e:#}");
+            eprintln!("mysessions: hook capture: {e:#}");
         }
         Ok(())
     } else {

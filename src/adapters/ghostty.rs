@@ -204,7 +204,10 @@ mod tests {
     #[test]
     fn strips_glyph_prefix_only() {
         assert_eq!(strip_status_glyph("✳ Review docs"), "Review docs");
-        assert_eq!(strip_status_glyph("◐ Roost design"), "Roost design");
+        assert_eq!(
+            strip_status_glyph("◐ My Sessions design"),
+            "My Sessions design"
+        );
         assert_eq!(
             strip_status_glyph("just dashboard-prod"),
             "just dashboard-prod"

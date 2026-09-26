@@ -27,7 +27,7 @@ use std::{
 pub fn run(snapshot: Option<&Path>) -> Result<()> {
     ensure!(
         io::stdin().is_terminal() && io::stdout().is_terminal(),
-        "the session browser needs an interactive terminal; use roost restore for a text preview"
+        "the session browser needs an interactive terminal; use mysessions restore for a text preview"
     );
     let store = Store::default_location()?;
     let mut browser = Browser::new(snapshot, &store)?;

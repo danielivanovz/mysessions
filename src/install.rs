@@ -1,4 +1,4 @@
-//! Install only roost's scheduler and `SessionStart` hook, preserving other
+//! Install only My Sessions' scheduler and `SessionStart` hook, preserving other
 //! settings. Plans are read-only; applying a plan checks for concurrent edits.
 use crate::{
     files,
@@ -12,7 +12,7 @@ use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const LABEL: &str = "local.roost.capture";
+const LABEL: &str = "local.mysessions.capture";
 
 struct Paths {
     binary: PathBuf,
@@ -23,7 +23,7 @@ struct Paths {
 impl Paths {
     fn new(home: &Path, state: PathBuf) -> Self {
         Self {
-            binary: home.join(".local/bin/roost"),
+            binary: home.join(".local/bin/mysessions"),
             plist: home
                 .join("Library/LaunchAgents")
                 .join(format!("{LABEL}.plist")),
@@ -274,7 +274,7 @@ fn plan(paths: &Paths, source: &Path, uninstall: bool) -> Result<Plan> {
     let env = environment(paths);
     let (command, document) = match (uninstall, previous.as_ref()) {
         (true, Some(previous)) => (previous.hook_command.clone(), previous.plist.clone()),
-        (true, None) => bail!("no managed roost installation found"),
+        (true, None) => bail!("no managed My Sessions installation found"),
         (false, _) => (hook_command(paths, &env), plist(paths, &env)),
     };
     check_ownership(paths, source, previous.as_ref(), uninstall)?;
@@ -357,13 +357,13 @@ fn check_ownership(
     if let Some(existing) = read_optional(&paths.plist)? {
         ensure!(
             previous.is_some_and(|p| p.plist.as_bytes() == existing),
-            "existing launch agent is not the recorded roost file; preserve or move it before retrying"
+            "existing launch agent is not the recorded My Sessions file; preserve or move it before retrying"
         );
     }
     if !uninstall {
         ensure!(
             previous.is_some() || !paths.binary.try_exists()? || source == paths.binary,
-            "{} exists without a roost installation record; refusing to overwrite it",
+            "{} exists without a My Sessions installation record; refusing to overwrite it",
             paths.binary.display()
         );
     }
@@ -424,7 +424,7 @@ fn apply(paths: &Paths, plan: &Plan, service: &dyn Service) -> Result<()> {
     let loaded = service.loaded()?;
     ensure!(
         !loaded || record(paths)?.is_some(),
-        "a service named {LABEL} is loaded without a roost installation record; refusing to replace it"
+        "a service named {LABEL} is loaded without a My Sessions installation record; refusing to replace it"
     );
     if plan.changes.iter().all(|c| !c.changed()) && loaded != plan.uninstall {
         return Ok(());
@@ -536,7 +536,7 @@ pub fn run(uninstall: bool, dry_run: bool) -> Result<()> {
     }
     apply(&paths, &plan, &Launchctl)?;
     eprintln!(
-        "roost: {}",
+        "mysessions: {}",
         if uninstall {
             "scheduler and hook removed; binary, snapshots and backups retained"
         } else {
@@ -648,7 +648,7 @@ mod tests {
     fn fixture(root: &Scratch) -> (Paths, PathBuf, Vec<u8>) {
         let paths = Paths::new(
             &root.0.join("home with ' quotes"),
-            root.0.join("state/roost"),
+            root.0.join("state/mysessions"),
         );
         let source = root.0.join("source");
         std::fs::write(&source, b"test executable").unwrap();

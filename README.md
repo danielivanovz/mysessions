@@ -1,4 +1,4 @@
-# roost
+# My Sessions
 
 Restore terminal-resident coding agent sessions into terminal tabs after a
 restart.
@@ -9,7 +9,7 @@ in lives only in the running process. Reboot, and the tabs come back as bare
 shells: the conversations are all still there, but which ones were open, and
 where, is gone.
 
-`roost` captures that mapping while the sessions are alive, and reopens them
+`mysessions` captures that mapping while the sessions are alive, and reopens them
 afterwards.
 
 > **Status: early implementation.** An interactive terminal browser, capture,
@@ -22,10 +22,10 @@ afterwards.
 
 ```sh
 cargo build --release
-./target/release/roost                    # open the terminal browser
+./target/release/mysessions               # open the terminal browser
 ```
 
-Use `roost` from a standalone terminal. The browser starts with the newest
+Use `mysessions` from a standalone terminal. The browser starts with the newest
 snapshot and selects valid exact/probable entries. Ambiguous entries require
 an explicit selection; missing conversations cannot be selected.
 
@@ -62,20 +62,20 @@ The browser needs at least 60 columns by 20 rows.
 The explicit commands remain available for shell use and automation:
 
 ```sh
-./target/release/roost browse --snapshot /path/to/snapshot.toml
-./target/release/roost capture --dry-run   # print what would be snapshotted
-./target/release/roost capture             # write a snapshot if the set changed
-./target/release/roost restore             # print resume commands from the latest snapshot
-./target/release/roost restore --apply     # open new Ghostty tabs
-./target/release/roost restore --session SESSION_ID --apply
-./target/release/roost restore --snapshot /path/to/snapshot.toml
-./target/release/roost install --dry-run   # review the installation
-./target/release/roost install             # copy binary and activate timer/hook
-~/.local/bin/roost uninstall --dry-run     # review automation removal
-~/.local/bin/roost uninstall               # keep binary, snapshots and backups
+./target/release/mysessions browse --snapshot /path/to/snapshot.toml
+./target/release/mysessions capture --dry-run   # print what would be snapshotted
+./target/release/mysessions capture             # write a snapshot if the set changed
+./target/release/mysessions restore             # print resume commands from the latest snapshot
+./target/release/mysessions restore --apply     # open new Ghostty tabs
+./target/release/mysessions restore --session SESSION_ID --apply
+./target/release/mysessions restore --snapshot /path/to/snapshot.toml
+./target/release/mysessions install --dry-run   # review the installation
+./target/release/mysessions install             # copy binary and activate timer/hook
+~/.local/bin/mysessions uninstall --dry-run     # review automation removal
+~/.local/bin/mysessions uninstall               # keep binary, snapshots and backups
 ```
 
-Snapshots live under `~/.local/state/roost/` (or `$XDG_STATE_HOME/roost`) and
+Snapshots live under `~/.local/state/mysessions/` (or `$XDG_STATE_HOME/mysessions`) and
 are readable and paste-able without the tool.
 
 Capture opens agent databases read-only and checks their required schema on
@@ -97,12 +97,12 @@ an explicit, quoted `cd ... && resume-command` to that tab's shell. A submitted
 command is not a guarantee that the agent passed its own trust/auth prompts.
 Repeated restore commands can open duplicates; existing tab ids are not reused.
 
-On macOS, `install` copies the running executable to `~/.local/bin/roost`,
-writes `~/Library/LaunchAgents/local.roost.capture.plist` (`StartInterval = 60`,
+On macOS, `install` copies the running executable to `~/.local/bin/mysessions`,
+writes `~/Library/LaunchAgents/local.mysessions.capture.plist` (`StartInterval = 60`,
 `RunAtLoad = true`, no daemon), and adds one
 [Claude SessionStart hook](https://code.claude.com/docs/en/hooks#sessionstart)
 to `~/.claude/settings.json`. Existing hooks and other settings are preserved.
-Changes to settings are backed up in the roost state directory; installation
+Changes to settings are backed up in the My Sessions state directory; installation
 rolls back if launchd activation fails. Repeating install is idempotent.
 Uninstall removes only the managed hook and launch agent. The installed binary
 remains available for standalone restore, even if this checkout is removed.
@@ -114,8 +114,8 @@ one second retain separate snapshot files. `capture --hook` always returns
 success and has a 3-second deadline; normal capture has a 10-second deadline.
 The supervisor stops only its own capture subprocesses on timeout. Busy starts
 can miss a hook capture; the minute timer is the backstop. Diagnostics go to
-`~/.local/state/roost/capture.log` (or the configured XDG state directory).
-Set `ROOST_TRACE_CAPTURE=1` when diagnosing a stalled adapter.
+`~/.local/state/mysessions/capture.log` (or the configured XDG state directory).
+Set `MYSESSIONS_TRACE_CAPTURE=1` when diagnosing a stalled adapter.
 
 ## Development
 
@@ -131,7 +131,7 @@ make coverage       # all targets/features; requires cargo-llvm-cov; 75% line fl
 make package        # verify the publishable crate contents and build
 make security       # fail on RustSec vulnerabilities and warnings; requires cargo-audit
 make complexity     # detailed JSON: target/complexity/report.json
-ROOST_TEST_SEED=42 QUICKCHECK_TESTS=1000 cargo test --locked property_
+MYSESSIONS_TEST_SEED=42 QUICKCHECK_TESTS=1000 cargo test --locked property_
 ```
 
 Install the pinned coverage tool with

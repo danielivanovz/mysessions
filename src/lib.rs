@@ -1,4 +1,4 @@
-//! `roost` — capture which terminal coding-agent sessions are open, and reopen
+//! `mysessions` — capture which terminal coding-agent sessions are open, and reopen
 //! them in terminal tabs after a restart.
 //!
 //! Capture is a short-lived run: read agent state and the terminal's tab list,
@@ -23,7 +23,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "roost", version, about)]
+#[command(name = "mysessions", version, about)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
