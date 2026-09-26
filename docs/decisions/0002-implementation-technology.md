@@ -123,6 +123,4 @@ Swift's only unique advantage, the in-process bridge, measured at zero.
 ## What is not decided by this record
 
 The distribution channel. Rust, TOML for configuration and snapshots, and
-the command name `mysessions` are accepted, as recorded at the top. The earlier
-provisional name `roost` was replaced before publication to avoid a collision
-with an adjacent terminal-workspace crate.
+the command name `mysessions` are accepted, as recorded at the top.
