@@ -200,6 +200,8 @@ at any scale.
 - [`docs/design.md`](docs/design.md) — problem, findings per agent, adapter
   architecture, failure modes, open questions, and a verification log that
   separates what is proven from what is assumed
+- [`docs/compatibility.md`](docs/compatibility.md) — dated, evidence-bound
+  compatibility observations and the manual release matrix
 - [`docs/decisions/`](docs/decisions/) — capture mechanism (short-lived runs
   plus hooks, no daemon) and implementation technology (Rust), each with the
   measurements behind it
