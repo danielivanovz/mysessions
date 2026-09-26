@@ -1,0 +1,36 @@
+[package]
+name = "roost"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+description = "Capture which terminal coding-agent sessions are open, and reopen them in terminal tabs after a restart."
+license = "MIT"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+libc = "0.2"
+ratatui = { version = "0.30.2", default-features = false, features = ["crossterm"] }
+rusqlite = { version = "0.32.1", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+[dev-dependencies]
+quickcheck = { version = "1.1", default-features = false }
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+undocumented_unsafe_blocks = "warn"
+dbg_macro = "warn"
+todo = "warn"
+# Explicit session_id/surface_id names distinguish the persisted identities.
+struct_field_names = "allow"
+
+[profile.release]
+opt-level = 2
+strip = true
