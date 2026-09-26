@@ -12,7 +12,7 @@
 
 use super::{Surface, TerminalAdapter};
 use anyhow::{Context, Result, bail};
-use std::process::Command;
+use std::process::{Command, Output};
 
 pub struct Ghostty;
 
@@ -77,13 +77,7 @@ impl TerminalAdapter for Ghostty {
             .args(["-e", &script])
             .output()
             .context("running osascript")?;
-        if !out.status.success() {
-            bail!(
-                "osascript failed: {}",
-                String::from_utf8_lossy(&out.stderr).trim()
-            );
-        }
-        parse_listing(&String::from_utf8_lossy(&out.stdout))
+        listing_from_output(out)
     }
 
     fn open_tab(&self, cwd: &std::path::Path, command: &str) -> Result<String> {
@@ -95,14 +89,32 @@ impl TerminalAdapter for Ghostty {
             .arg(command)
             .output()
             .context("opening Ghostty tab")?;
-        if !out.status.success() {
-            bail!(
-                "Ghostty tab creation/input failed: {} (a new tab may already exist)",
-                String::from_utf8_lossy(&out.stderr).trim()
-            );
-        }
-        Ok(String::from_utf8(out.stdout)?.trim().to_string())
+        opened_surface_from_output(out)
     }
+}
+
+fn listing_from_output(out: Output) -> Result<Vec<Surface>> {
+    if !out.status.success() {
+        bail!(
+            "osascript failed: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        );
+    }
+    parse_listing(&String::from_utf8(out.stdout)?)
+}
+
+fn opened_surface_from_output(out: Output) -> Result<String> {
+    if !out.status.success() {
+        bail!(
+            "Ghostty tab creation/input failed: {} (a new tab may already exist)",
+            String::from_utf8_lossy(&out.stderr).trim()
+        );
+    }
+    let id = String::from_utf8(out.stdout)?.trim().to_string();
+    if id.is_empty() {
+        bail!("Ghostty created a tab but returned no terminal id");
+    }
+    Ok(id)
 }
 
 fn parse_listing(text: &str) -> Result<Vec<Surface>> {
@@ -143,6 +155,15 @@ pub fn strip_status_glyph(title: &str) -> &str {
 #[allow(clippy::needless_pass_by_value)]
 mod tests {
     use super::*;
+    use std::os::unix::process::ExitStatusExt;
+
+    fn output(code: i32, stdout: &[u8], stderr: &[u8]) -> Output {
+        Output {
+            status: std::process::ExitStatus::from_raw(code << 8),
+            stdout: stdout.to_vec(),
+            stderr: stderr.to_vec(),
+        }
+    }
 
     #[test]
     fn property_listing_preserves_directory_and_title_text() {
@@ -189,5 +210,37 @@ mod tests {
             "just dashboard-prod"
         );
         assert_eq!(strip_status_glyph("A B"), "A B");
+    }
+
+    #[test]
+    fn osascript_failures_preserve_actionable_context() {
+        let error = listing_from_output(output(1, b"", b"not authorised\n"))
+            .unwrap_err()
+            .to_string();
+        assert_eq!(error, "osascript failed: not authorised");
+
+        let error = opened_surface_from_output(output(1, b"", b"event timed out\n"))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("event timed out"));
+        assert!(error.contains("new tab may already exist"));
+    }
+
+    #[test]
+    fn osascript_success_requires_valid_nonempty_output() {
+        let text = format!("w{FIELD}t{FIELD}s{FIELD}/work{FIELD}Title{RECORD}\n");
+        assert_eq!(
+            listing_from_output(output(0, text.as_bytes(), b""))
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            opened_surface_from_output(output(0, b"surface-1\n", b"")).unwrap(),
+            "surface-1"
+        );
+        assert!(opened_surface_from_output(output(0, b" \n", b"")).is_err());
+        assert!(listing_from_output(output(0, &[0xff], b"")).is_err());
+        assert!(opened_surface_from_output(output(0, &[0xff], b"")).is_err());
     }
 }

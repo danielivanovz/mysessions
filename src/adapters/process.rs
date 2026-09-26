@@ -4,7 +4,7 @@ use anyhow::{Context, Result, bail, ensure};
 use std::collections::{HashMap, HashSet};
 use std::ffi::CString;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Output};
 
 #[derive(Debug, Clone)]
 pub(super) struct Process {
@@ -47,7 +47,7 @@ pub(super) fn terminal_processes(executable: &str) -> Result<Vec<Process>> {
         .args(["-nP", "-a", "-p", &pids, "-F0pfn"])
         .output()
         .context("reading agent open files")?;
-    let observations = parse_files(&String::from_utf8(out.stdout)?)?;
+    let observations = open_files_from_output(out)?;
     for process in &mut processes {
         if let Some((cwd, files)) = observations.get(&process.pid) {
             process.cwd = cwd.clone();
@@ -79,12 +79,29 @@ fn process_table(executable: &str) -> Result<Vec<Process>> {
         .args(["-ww", "-axo", "pid=,tty=,lstart=,comm="])
         .output()
         .context("reading process table")?;
+    process_table_from_output(out, executable)
+}
+
+fn process_table_from_output(out: Output, executable: &str) -> Result<Vec<Process>> {
     ensure!(
         out.status.success(),
         "ps failed: {}",
-        String::from_utf8_lossy(&out.stderr)
+        String::from_utf8_lossy(&out.stderr).trim()
     );
     parse_table(&String::from_utf8(out.stdout)?, executable)
+}
+
+fn open_files_from_output(out: Output) -> Result<OpenFiles> {
+    // lsof exits 1 with no diagnostics when every candidate disappears
+    // between ps and this query. Let the caller's liveness recheck discard
+    // that race, but do not mistake an actual diagnostic for empty results.
+    let diagnostic = String::from_utf8_lossy(&out.stderr);
+    ensure!(
+        out.status.success() || diagnostic.trim().is_empty(),
+        "lsof failed: {}",
+        diagnostic.trim()
+    );
+    parse_files(&String::from_utf8(out.stdout)?)
 }
 
 fn parse_table(text: &str, executable: &str) -> Result<Vec<Process>> {
@@ -225,6 +242,15 @@ fn parse_arguments(buffer: &[u8]) -> Result<Vec<String>> {
 #[allow(clippy::needless_pass_by_value)]
 mod tests {
     use super::*;
+    use std::os::unix::process::ExitStatusExt;
+
+    fn output(code: i32, stdout: &[u8], stderr: &[u8]) -> Output {
+        Output {
+            status: std::process::ExitStatus::from_raw(code << 8),
+            stdout: stdout.to_vec(),
+            stderr: stderr.to_vec(),
+        }
+    }
 
     #[test]
     fn property_argv_preserves_boundaries_and_never_reads_environment() {
@@ -267,5 +293,30 @@ mod tests {
             ["opencode", "/a path", "--prompt", "run tests"]
         );
         assert!(parse_arguments(&bytes[..15]).is_err());
+    }
+
+    #[test]
+    fn subprocess_failures_are_not_mistaken_for_empty_observations() {
+        let error = process_table_from_output(output(1, b"", b"permission denied\n"), "codex")
+            .unwrap_err()
+            .to_string();
+        assert_eq!(error, "ps failed: permission denied");
+
+        let error = open_files_from_output(output(1, b"", b"kernel denied access\n"))
+            .unwrap_err()
+            .to_string();
+        assert_eq!(error, "lsof failed: kernel denied access");
+
+        assert!(
+            open_files_from_output(output(1, b"", b""))
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn invalid_subprocess_encoding_is_reported() {
+        assert!(process_table_from_output(output(0, &[0xff], b""), "codex").is_err());
+        assert!(open_files_from_output(output(0, &[0xff], b"")).is_err());
     }
 }
