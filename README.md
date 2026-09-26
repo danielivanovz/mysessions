@@ -127,9 +127,15 @@ make check          # formatting, strict linting, tests, cyclomatic complexity
 make fmt            # apply the formatter
 make lint
 make test
+make coverage       # all targets/features; requires cargo-llvm-cov; 75% line floor
 make complexity     # detailed JSON: target/complexity/report.json
 ROOST_TEST_SEED=42 QUICKCHECK_TESTS=1000 cargo test --locked property_
 ```
+
+Install the pinned coverage tool with
+`cargo install cargo-llvm-cov --version 0.8.7 --locked` and add Rust's
+`llvm-tools-preview` component. Coverage runs separately from `make check` so
+the normal local feedback loop does not repeat the full test suite.
 
 Clippy's standard and pedantic lints run with warnings treated as errors,
 including undocumented unsafe blocks. Explicit persisted identity names

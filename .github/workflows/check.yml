@@ -20,3 +20,9 @@ jobs:
           ROOST_TEST_SEED: ${{ github.run_number }}
           QUICKCHECK_TESTS: 1000
         run: cargo test --locked property_
+      - name: Install coverage tooling
+        run: |
+          rustup component add llvm-tools-preview
+          cargo install cargo-llvm-cov --version 0.8.7 --locked
+      - name: Enforce line coverage
+        run: make coverage
