@@ -2,7 +2,7 @@ use super::*;
 use crate::{
     adapters::Surface,
     model::{Agent, Confidence, Session, Strategy},
-    test_support::Scratch,
+    test_support::{Scratch, lock_released},
 };
 use ratatui::{
     Terminal,
@@ -191,11 +191,7 @@ fn submit_revalidates_holds_capture_lock_and_prevents_duplicate_attempts() {
     assert!(state.selected().is_empty());
     state.load(saved, &root.0);
     assert!(state.selected().is_empty()); // Changing snapshots cannot reopen attempted ids.
-    assert!(
-        files::try_lock(&store.dir().join(".capture.lock"))
-            .unwrap()
-            .is_some()
-    );
+    assert!(lock_released(&store.dir().join(".capture.lock")));
 }
 
 #[test]

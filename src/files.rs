@@ -66,13 +66,25 @@ pub fn try_lock(path: &Path) -> Result<Option<File>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::{Scratch, lock_released, lock_released_within};
+    use std::time::Duration;
+
     #[test]
     fn capture_lock_is_exclusive_and_released_when_owner_exits() {
-        let root = crate::test_support::Scratch::new("lock");
+        let root = Scratch::new("lock");
         let path = root.0.join("capture.lock");
         let first = try_lock(&path).unwrap().unwrap();
         assert!(try_lock(&path).unwrap().is_none());
         drop(first);
-        assert!(try_lock(&path).unwrap().is_some());
+        assert!(lock_released(&path));
+    }
+
+    #[test]
+    fn waiting_for_release_still_reports_a_lock_that_is_never_dropped() {
+        let root = Scratch::new("lock-held");
+        let path = root.0.join("capture.lock");
+        let held = try_lock(&path).unwrap().unwrap();
+        assert!(!lock_released_within(&path, Duration::from_millis(50)));
+        drop(held);
     }
 }
