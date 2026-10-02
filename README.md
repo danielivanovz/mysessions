@@ -17,8 +17,7 @@ afterwards.
 > Claude's registry supplies
 > exact process identity. opencode log timing and Codex open transcripts supply
 > candidates, labelled probable or ambiguous.
-> Design in [`docs/design.md`](docs/design.md), decisions in
-> [`docs/decisions/`](docs/decisions/).
+> Decisions in [`docs/decisions/`](docs/decisions/).
 
 ```sh
 cargo build --release
@@ -197,16 +196,11 @@ at any scale.
 
 ## Design
 
-- [`docs/design.md`](docs/design.md) — problem, findings per agent, adapter
-  architecture, failure modes, open questions, and a verification log that
-  separates what is proven from what is assumed
 - [`docs/compatibility.md`](docs/compatibility.md) — dated, evidence-bound
   compatibility observations and the manual release matrix
 - [`docs/decisions/`](docs/decisions/) — capture mechanism (short-lived runs
   plus hooks, no daemon) and implementation technology (Rust), each with the
   measurements behind it
-- [`docs/article-notes.md`](docs/article-notes.md) — raw material for a
-  write-up: measurements, timeline, and the corrections made along the way
 
 ## Scope
 

@@ -8,3 +8,5 @@ target/
 .venv/
 __pycache__/
 scratch/
+# Local research, spikes and drafts; never committed
+.misc/
