@@ -5,6 +5,10 @@ edition = "2024"
 rust-version = "1.89"
 description = "Capture which terminal coding-agent sessions are open, and reopen them in terminal tabs after a restart."
 license = "MIT"
+repository = "https://github.com/danielivanovz/mysessions"
+readme = "README.md"
+keywords = ["claude-code", "ghostty", "opencode", "codex", "terminal"]
+categories = ["command-line-utilities", "development-tools"]
 include = [
     "/Cargo.lock",
     "/Cargo.toml",
