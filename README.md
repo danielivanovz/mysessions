@@ -19,6 +19,15 @@ afterwards.
 > candidates, labelled probable or ambiguous.
 > Decisions in [`docs/decisions/`](docs/decisions/).
 
+macOS only. Install with Homebrew, which builds from source:
+
+```sh
+brew install danielivanovz/tap/mysessions
+mysessions                                # open the terminal browser
+```
+
+Or build it yourself:
+
 ```sh
 cargo build --release
 ./target/release/mysessions               # open the terminal browser
