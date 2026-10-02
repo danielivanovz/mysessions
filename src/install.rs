@@ -8,6 +8,7 @@ use anyhow::{Context, Result, bail, ensure};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
+use std::ffi::OsStr;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -15,7 +16,12 @@ use std::process::Command;
 const LABEL: &str = "local.mysessions.capture";
 
 struct Paths {
+    /// Executable the launch agent and hook invoke.
     binary: PathBuf,
+    /// Whether installation writes `binary` from the running executable.
+    /// False when `binary` is a package manager's link that already resolves
+    /// to it, so upgrades take effect without reinstalling.
+    copy_binary: bool,
     plist: PathBuf,
     settings: PathBuf,
     state: PathBuf,
@@ -24,6 +30,7 @@ impl Paths {
     fn new(home: &Path, state: PathBuf) -> Self {
         Self {
             binary: home.join(".local/bin/mysessions"),
+            copy_binary: true,
             plist: home
                 .join("Library/LaunchAgents")
                 .join(format!("{LABEL}.plist")),
@@ -31,8 +38,53 @@ impl Paths {
             state,
         }
     }
+    /// Invoke Homebrew's version-independent link instead of a private copy
+    /// when `exe` is a Homebrew install; otherwise keep copying.
+    fn for_executable(mut self, exe: &Path) -> Result<Self> {
+        if let Some(link) = homebrew_link(exe)? {
+            self.binary = link;
+            self.copy_binary = false;
+        }
+        Ok(self)
+    }
     fn record(&self) -> PathBuf {
         self.state.join("installation.toml")
+    }
+}
+
+/// Homebrew's stable path to the running executable, if it is one.
+///
+/// Homebrew installs each release into `<prefix>/Cellar/<formula>/<version>`
+/// and repoints `<prefix>/opt/<formula>` on upgrade. A private copy would keep
+/// running the release it was copied from; the `opt` path follows upgrades.
+/// Returns `None` unless `exe` resolves into a keg's `bin` directory and the
+/// `opt` link currently resolves to that same file. An older keg run directly
+/// therefore keeps the copying behaviour rather than pointing at a newer one.
+fn homebrew_link(exe: &Path) -> Result<Option<PathBuf>> {
+    let real = exe
+        .canonicalize()
+        .with_context(|| format!("resolving {}", exe.display()))?;
+    let mut up = real.ancestors().skip(1);
+    let (Some(bin), Some(_version), Some(formula), Some(cellar)) =
+        (up.next(), up.next(), up.next(), up.next())
+    else {
+        return Ok(None);
+    };
+    let (Some(prefix), Some(name), Some(formula)) =
+        (cellar.parent(), real.file_name(), formula.file_name())
+    else {
+        return Ok(None);
+    };
+    if bin.file_name() != Some(OsStr::new("bin"))
+        || cellar.file_name() != Some(OsStr::new("Cellar"))
+    {
+        return Ok(None);
+    }
+    let link = prefix.join("opt").join(formula).join("bin").join(name);
+    match link.canonicalize() {
+        Ok(target) => Ok((target == real).then_some(link)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(e).with_context(|| format!("resolving {}", link.display())),
     }
 }
 
@@ -279,7 +331,7 @@ fn plan(paths: &Paths, source: &Path, uninstall: bool) -> Result<Plan> {
     };
     check_ownership(paths, source, previous.as_ref(), uninstall)?;
     let mut changes = Vec::new();
-    if !uninstall {
+    if !uninstall && paths.copy_binary {
         changes.push(Change::new(
             paths.binary.clone(),
             Some(std::fs::read(source)?),
@@ -360,7 +412,7 @@ fn check_ownership(
             "existing launch agent is not the recorded My Sessions file; preserve or move it before retrying"
         );
     }
-    if !uninstall {
+    if !uninstall && paths.copy_binary {
         ensure!(
             previous.is_some() || !paths.binary.try_exists()? || source == paths.binary,
             "{} exists without a My Sessions installation record; refusing to overwrite it",
@@ -502,7 +554,9 @@ pub fn run(uninstall: bool, dry_run: bool) -> Result<()> {
         cfg!(target_os = "macos"),
         "installation currently supports macOS only"
     );
-    let paths = Paths::new(&home_dir()?, Store::default_location()?.dir().into());
+    let exe = std::env::current_exe()?;
+    let paths =
+        Paths::new(&home_dir()?, Store::default_location()?.dir().into()).for_executable(&exe)?;
     let _lock = if dry_run {
         None
     } else {
@@ -511,7 +565,7 @@ pub fn run(uninstall: bool, dry_run: bool) -> Result<()> {
                 .context("another install/uninstall is running")?,
         )
     };
-    let plan = plan(&paths, &std::env::current_exe()?, uninstall)?;
+    let plan = plan(&paths, &exe, uninstall)?;
     for change in plan.changes.iter().filter(|c| c.changed()) {
         println!(
             "{} {}",
@@ -558,8 +612,10 @@ impl Prepared {
             cfg!(target_os = "macos"),
             "installation currently supports macOS only"
         );
-        let paths = Paths::new(&home_dir()?, Store::default_location()?.dir().into());
-        let plan = plan(&paths, &std::env::current_exe()?, uninstall)?;
+        let exe = std::env::current_exe()?;
+        let paths = Paths::new(&home_dir()?, Store::default_location()?.dir().into())
+            .for_executable(&exe)?;
+        let plan = plan(&paths, &exe, uninstall)?;
         Ok(Self { paths, plan })
     }
 
@@ -645,11 +701,14 @@ mod tests {
             Ok(())
         }
     }
-    fn fixture(root: &Scratch) -> (Paths, PathBuf, Vec<u8>) {
-        let paths = Paths::new(
+    fn scratch_paths(root: &Scratch) -> Paths {
+        Paths::new(
             &root.0.join("home with ' quotes"),
             root.0.join("state/mysessions"),
-        );
+        )
+    }
+    fn fixture(root: &Scratch) -> (Paths, PathBuf, Vec<u8>) {
+        let paths = scratch_paths(root);
         let source = root.0.join("source");
         std::fs::write(&source, b"test executable").unwrap();
         let original = br#"{"env":{"EXISTING":"kept"},"hooks":{"SessionStart":[{"matcher":"resume","hooks":[{"type":"command","command":"echo user hook"}]}],"Stop":[{"hooks":[{"type":"command","command":"echo stop"}]}]}}"#.to_vec();
@@ -686,6 +745,107 @@ mod tests {
         assert!(!record(&paths).unwrap().unwrap().active);
         apply(&paths, &plan(&paths, &source, true).unwrap(), &service).unwrap();
     }
+    /// Lay out a Homebrew keg for `version` and point `opt` at it, as
+    /// `brew install` and `brew upgrade` do. Returns the keg's executable.
+    fn brew_keg(prefix: &Path, version: &str) -> PathBuf {
+        let exe = prefix.join(format!("Cellar/mysessions/{version}/bin/mysessions"));
+        files::atomic_write(&exe, version.as_bytes(), 0o755).unwrap();
+        let opt = prefix.join("opt/mysessions");
+        std::fs::create_dir_all(opt.parent().unwrap()).unwrap();
+        let _ = std::fs::remove_file(&opt);
+        std::os::unix::fs::symlink(format!("../Cellar/mysessions/{version}"), &opt).unwrap();
+        exe
+    }
+    fn opt_link(prefix: &Path) -> PathBuf {
+        prefix
+            .canonicalize()
+            .unwrap()
+            .join("opt/mysessions/bin/mysessions")
+    }
+
+    #[test]
+    fn homebrew_link_follows_opt_only_for_the_current_keg() {
+        let root = Scratch::new("brew-layout");
+        let prefix = root.0.join("brew prefix");
+        let old = brew_keg(&prefix, "0.1.0");
+        let linked = prefix.join("bin/mysessions");
+        std::fs::create_dir_all(linked.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink("../Cellar/mysessions/0.1.0/bin/mysessions", &linked).unwrap();
+        assert_eq!(homebrew_link(&linked).unwrap(), Some(opt_link(&prefix)));
+        assert_eq!(homebrew_link(&old).unwrap(), Some(opt_link(&prefix)));
+        // After an upgrade, running the superseded keg directly keeps copying.
+        let new = brew_keg(&prefix, "0.2.0");
+        assert_eq!(homebrew_link(&old).unwrap(), None);
+        assert_eq!(homebrew_link(&new).unwrap(), Some(opt_link(&prefix)));
+        std::fs::remove_file(prefix.join("opt/mysessions")).unwrap();
+        assert_eq!(homebrew_link(&new).unwrap(), None);
+        let (_, source, _) = fixture(&root);
+        assert_eq!(homebrew_link(&source).unwrap(), None);
+    }
+
+    #[test]
+    fn homebrew_install_invokes_opt_and_survives_upgrade_unchanged() {
+        let root = Scratch::new("brew-install");
+        let (copy_paths, _, _) = fixture(&root);
+        let prefix = root.0.join("brew prefix");
+        let exe = brew_keg(&prefix, "0.1.0");
+        let paths = scratch_paths(&root).for_executable(&exe).unwrap();
+        assert!(!paths.copy_binary && paths.binary == opt_link(&prefix));
+        let service = FakeService::default();
+        apply(&paths, &plan(&paths, &exe, false).unwrap(), &service).unwrap();
+        assert!(service.loaded.get());
+        assert!(!copy_paths.binary.exists());
+        let opt = opt_link(&prefix).to_string_lossy().into_owned();
+        assert!(
+            std::fs::read_to_string(&paths.plist)
+                .unwrap()
+                .contains(&opt)
+        );
+        assert!(
+            std::fs::read_to_string(&paths.settings)
+                .unwrap()
+                .contains(&opt)
+        );
+        let upgraded = brew_keg(&prefix, "0.2.0");
+        let paths = scratch_paths(&root).for_executable(&upgraded).unwrap();
+        let after_upgrade = plan(&paths, &upgraded, false).unwrap();
+        assert!(after_upgrade.changes.iter().all(|c| !c.changed()));
+        apply(&paths, &plan(&paths, &upgraded, true).unwrap(), &service).unwrap();
+        assert!(!service.loaded.get() && !paths.plist.exists());
+    }
+
+    #[test]
+    fn switching_to_homebrew_replaces_the_hook_and_keeps_the_old_copy() {
+        let root = Scratch::new("brew-switch");
+        let (copy_paths, source, _) = fixture(&root);
+        let service = FakeService::default();
+        apply(
+            &copy_paths,
+            &plan(&copy_paths, &source, false).unwrap(),
+            &service,
+        )
+        .unwrap();
+        let prefix = root.0.join("brew prefix");
+        let exe = brew_keg(&prefix, "0.1.0");
+        let paths = scratch_paths(&root).for_executable(&exe).unwrap();
+        apply(&paths, &plan(&paths, &exe, false).unwrap(), &service).unwrap();
+        let doc: Value = serde_json::from_slice(&std::fs::read(&paths.settings).unwrap()).unwrap();
+        let managed: Vec<_> = doc["hooks"]["SessionStart"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|g| g["hooks"].as_array().unwrap())
+            .filter_map(|h| h["command"].as_str())
+            .filter(|c| c.contains("capture --hook"))
+            .collect();
+        assert_eq!(managed.len(), 1);
+        assert!(managed[0].contains(&*opt_link(&prefix).to_string_lossy()));
+        assert_eq!(
+            std::fs::read(&copy_paths.binary).unwrap(),
+            b"test executable"
+        );
+    }
+
     #[test]
     fn failed_bootstrap_rolls_back_files_and_a_failed_upgrade_reloads_old_service() {
         let root = Scratch::new("install-rollback");

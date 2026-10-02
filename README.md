@@ -107,6 +107,15 @@ Uninstall removes only the managed hook and launch agent. The installed binary
 remains available for standalone restore, even if this checkout is removed.
 Add `~/.local/bin` to your shell's PATH or invoke that absolute path directly.
 
+When the running executable was installed by Homebrew, `install` copies
+nothing. The launch agent and hook invoke Homebrew's
+`$(brew --prefix)/opt/mysessions/bin/mysessions` link instead, which
+`brew upgrade` repoints at each new release, so upgrades need no reinstall.
+Switching an existing installation to Homebrew replaces the hook and leaves
+the earlier `~/.local/bin` copy in place. Run `mysessions uninstall` before
+`brew uninstall`; otherwise the timer keeps trying to start a removed
+executable.
+
 Capture and restore share a nonblocking lock, preventing hook/timer captures
 from racing or replacing the selected snapshot during restore. Changes within
 one second retain separate snapshot files. `capture --hook` always returns
